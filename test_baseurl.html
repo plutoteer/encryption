@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BaseURL配置测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        .config-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .config-label { font-weight: bold; }
+        .config-value { font-family: monospace; }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .test-section {
+            margin: 15px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 BaseURL配置测试</h1>
+    
+    <div class="container">
+        <h2>📋 当前配置</h2>
+        <div id="config"></div>
+    </div>
+    
+    <div class="container">
+        <h2>🔍 端口检测测试</h2>
+        <button onclick="testPortDetection()">测试端口检测</button>
+        <button onclick="testAllPorts()">测试所有端口</button>
+        <div id="portTestResults"></div>
+    </div>
+    
+    <div class="container">
+        <h2>🌐 API连接测试</h2>
+        <button onclick="testBackendAPI()">测试后端API</button>
+        <button onclick="testBackendOutput()">测试后端输出接口</button>
+        <button onclick="testCoordinatorAPI()">测试协调器API</button>
+        <div id="apiTestResults"></div>
+    </div>
+    
+    <div class="container">
+        <h2>📊 实时监控</h2>
+        <button onclick="startRealtimeTest()">开始实时测试</button>
+        <button onclick="stopRealtimeTest()">停止实时测试</button>
+        <div id="realtimeResults"></div>
+    </div>
+
+    <script>
+        let realtimeInterval = null;
+        
+        // 显示当前配置
+        function showConfig() {
+            const config = {
+                '前端端口': window.location.port || '8030',
+                '前端URL': window.location.href,
+                '后端端口': getBackendPort(),
+                '后端URL': `http://localhost:${getBackendPort()}`,
+                '协调器端口': '8060',
+                '协调器URL': 'http://localhost:8060',
+                'User Agent': navigator.userAgent,
+                '时间': new Date().toLocaleString()
+            };
+            
+            const configDiv = document.getElementById('config');
+            configDiv.innerHTML = Object.entries(config)
+                .map(([key, value]) => `
+                    <div class="config-item">
+                        <span class="config-label">${key}:</span>
+                        <span class="config-value">${value}</span>
+                    </div>
+                `).join('');
+        }
+        
+        // 获取后端端口（模拟env.js的逻辑）
+        function getBackendPort() {
+            // 优先使用环境变量配置
+            let backendPort = window.BACKEND_PORT;
+            
+            // 如果环境变量没有设置，尝试从URL参数获取
+            if (!backendPort) {
+                const urlParams = new URLSearchParams(window.location.search);
+                backendPort = urlParams.get('backendPort');
+            }
+            
+            // 如果都没有，根据前端端口推断后端端口
+            if (!backendPort) {
+                const frontendPort = window.location.port || '8030';
+                switch (frontendPort) {
+                    case '8030': backendPort = '8083'; break;
+                    case '8031': backendPort = '8082'; break;
+                    case '8032': backendPort = '8081'; break;
+                    default: backendPort = '8083';
+                }
+            }
+            
+            // 确保端口号是有效的数字
+            if (!backendPort || isNaN(parseInt(backendPort))) {
+                console.warn('无效的后端端口:', backendPort, '使用默认端口8083');
+                backendPort = '8083';
+            }
+            
+            return backendPort;
+        }
+        
+        // 添加结果
+        function addResult(containerId, type, title, content) {
+            const resultsDiv = document.getElementById(containerId);
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `status ${type}`;
+            resultDiv.innerHTML = `
+                <h4>${title}</h4>
+                <pre>${content}</pre>
+                <small>${new Date().toLocaleTimeString()}</small>
+            `;
+            resultsDiv.appendChild(resultDiv);
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+        
+        // 测试端口检测
+        async function testPortDetection() {
+            const backendPort = getBackendPort();
+            addResult('portTestResults', 'info', '🔍 端口检测测试', 
+                `检测到的后端端口: ${backendPort}\n前端端口: ${window.location.port || '8030'}\n检测逻辑: 环境变量 → URL参数 → 端口映射 → 默认值`);
+        }
+        
+        // 测试所有端口
+        async function testAllPorts() {
+            const ports = ['8081', '8082', '8083', '8084', '8085'];
+            addResult('portTestResults', 'info', '🔍 测试所有端口', '开始测试所有可能的端口...');
+            
+            for (const port of ports) {
+                try {
+                    const testURL = `http://localhost:${port}/status`;
+                    const response = await fetch(testURL, {
+                        method: 'GET',
+                        headers: { 'Accept': 'application/json' },
+                        timeout: 3000
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        addResult('portTestResults', 'success', `✅ 端口 ${port} 可用`, 
+                            `URL: ${testURL}\n状态码: ${response.status}\n响应数据:\n${JSON.stringify(data, null, 2)}`);
+                    } else {
+                        addResult('portTestResults', 'warning', `⚠️ 端口 ${port} 响应异常`, 
+                            `URL: ${testURL}\n状态码: ${response.status}\n状态文本: ${response.statusText}`);
+                    }
+                } catch (error) {
+                    addResult('portTestResults', 'error', `❌ 端口 ${port} 不可用`, 
+                        `URL: http://localhost:${port}/status\n错误: ${error.message}`);
+                }
+            }
+        }
+        
+        // 测试后端API
+        async function testBackendAPI() {
+            const backendPort = getBackendPort();
+            const backendUrl = `http://localhost:${backendPort}/status`;
+            
+            addResult('apiTestResults', 'info', '🔍 测试后端API', `正在测试: ${backendUrl}`);
+            
+            try {
+                const response = await fetch(backendUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    addResult('apiTestResults', 'success', '✅ 后端API测试成功', 
+                        `状态码: ${response.status}\n响应数据:\n${JSON.stringify(data, null, 2)}`);
+                } else {
+                    addResult('apiTestResults', 'error', '❌ 后端API测试失败', 
+                        `状态码: ${response.status}\n状态文本: ${response.statusText}`);
+                }
+            } catch (error) {
+                addResult('apiTestResults', 'error', '❌ 后端API测试错误', 
+                    `错误类型: ${error.name}\n错误信息: ${error.message}`);
+            }
+        }
+        
+        // 测试后端输出接口
+        async function testBackendOutput() {
+            const backendPort = getBackendPort();
+            const backendUrl = `http://localhost:${backendPort}/api/participant/backend-output`;
+            
+            addResult('apiTestResults', 'info', '🔍 测试后端输出接口', `正在测试: ${backendUrl}`);
+            
+            try {
+                const response = await fetch(backendUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    addResult('apiTestResults', 'success', '✅ 后端输出接口测试成功', 
+                        `状态码: ${response.status}\n角色: ${data.role}\n输出内容:\n${data.output}`);
+                } else {
+                    addResult('apiTestResults', 'error', '❌ 后端输出接口测试失败', 
+                        `状态码: ${response.status}\n状态文本: ${response.statusText}`);
+                }
+            } catch (error) {
+                addResult('apiTestResults', 'error', '❌ 后端输出接口测试错误', 
+                    `错误类型: ${error.name}\n错误信息: ${error.message}`);
+            }
+        }
+        
+        // 测试协调器API
+        async function testCoordinatorAPI() {
+            const coordinatorUrl = 'http://localhost:8060/api/coordinator/status';
+            
+            addResult('apiTestResults', 'info', '🔍 测试协调器API', `正在测试: ${coordinatorUrl}`);
+            
+            try {
+                const response = await fetch(coordinatorUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    addResult('apiTestResults', 'success', '✅ 协调器API测试成功', 
+                        `状态码: ${response.status}\n响应数据:\n${JSON.stringify(data, null, 2)}`);
+                } else {
+                    addResult('apiTestResults', 'error', '❌ 协调器API测试失败', 
+                        `状态码: ${response.status}\n状态文本: ${response.statusText}`);
+                }
+            } catch (error) {
+                addResult('apiTestResults', 'error', '❌ 协调器API测试错误', 
+                    `错误类型: ${error.name}\n错误信息: ${error.message}`);
+            }
+        }
+        
+        // 开始实时测试
+        function startRealtimeTest() {
+            if (realtimeInterval) {
+                addResult('realtimeResults', 'warning', '⚠️ 实时测试已在进行中', '请先停止当前测试');
+                return;
+            }
+            
+            addResult('realtimeResults', 'info', '🔄 开始实时测试', '每10秒测试一次后端连接');
+            
+            realtimeInterval = setInterval(async () => {
+                const backendPort = getBackendPort();
+                const backendUrl = `http://localhost:${backendPort}/status`;
+                
+                try {
+                    const response = await fetch(backendUrl);
+                    const data = await response.json();
+                    
+                    const realtimeDiv = document.getElementById('realtimeResults');
+                    realtimeDiv.innerHTML = `
+                        <div class="status success">
+                            <h4>✅ 后端连接正常</h4>
+                            <div class="config-item">
+                                <span class="config-label">参与方ID:</span>
+                                <span class="config-value">${data.id}</span>
+                            </div>
+                            <div class="config-item">
+                                <span class="config-label">IP地址:</span>
+                                <span class="config-value">${data.ip}</span>
+                            </div>
+                            <div class="config-item">
+                                <span class="config-label">端口:</span>
+                                <span class="config-value">${data.port}</span>
+                            </div>
+                            <div class="config-item">
+                                <span class="config-label">状态:</span>
+                                <span class="config-value">${data.status}</span>
+                            </div>
+                            <div class="config-item">
+                                <span class="config-label">数据分割:</span>
+                                <span class="config-value">${data.data_split}</span>
+                            </div>
+                            <small>最后更新: ${new Date().toLocaleTimeString()}</small>
+                        </div>
+                    `;
+                } catch (error) {
+                    const realtimeDiv = document.getElementById('realtimeResults');
+                    realtimeDiv.innerHTML = `
+                        <div class="status error">
+                            <h4>❌ 后端连接失败</h4>
+                            <p>错误: ${error.message}</p>
+                            <small>最后检查: ${new Date().toLocaleTimeString()}</small>
+                        </div>
+                    `;
+                }
+            }, 10000);
+        }
+        
+        // 停止实时测试
+        function stopRealtimeTest() {
+            if (realtimeInterval) {
+                clearInterval(realtimeInterval);
+                realtimeInterval = null;
+                addResult('realtimeResults', 'info', '⏹️ 停止实时测试', '实时测试已停止');
+                document.getElementById('realtimeResults').innerHTML = '';
+            }
+        }
+        
+        // 页面加载时显示配置
+        window.onload = function() {
+            showConfig();
+        };
+    </script>
+</body>
+</html> 

@@ -1,14 +1,18 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Home from './src/views/Home.vue'
-import OnlineStatusPage from './src/views/OnlineStatusPage.vue'
-import CollaborativeDecrypt from './src/views/CollaborativeDecrypt.vue'
+import HomePage from './src/views/Home.vue'
 import KeyGenProgress from './src/views/KeyGenProgress.vue'
+import BackendOutputPage from './src/views/BackendOutputPage.vue'
+import TrainingChart from './src/views/TrainingChart.vue'
 
 const routes = [
-  { path: '/', component: Home },
-  { path: '/online-status', component: OnlineStatusPage },
-  { path: '/collaborative-decrypt', component: CollaborativeDecrypt },
+  {
+    path: '/',
+    name: 'HomePage',
+    component: HomePage
+  },
   { path: '/keygen-progress', component: KeyGenProgress },
+  { path: '/backend-output', component: BackendOutputPage },
+  { path: '/training-chart', component: TrainingChart },
 ]
 
 const router = createRouter({

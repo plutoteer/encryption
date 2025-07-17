@@ -1,0 +1,17 @@
+@echo off
+echo 启动参与方1前端 (端口 8030)
+echo 连接到后端端口 8061
+echo.
+
+set VUE_APP_PARTICIPANT_ID=1
+set VUE_APP_FRONTEND_PORT=8030
+set VUE_APP_BACKEND_PORT=8061
+
+echo 环境变量设置:
+echo VUE_APP_PARTICIPANT_ID=%VUE_APP_PARTICIPANT_ID%
+echo VUE_APP_FRONTEND_PORT=%VUE_APP_FRONTEND_PORT%
+echo VUE_APP_BACKEND_PORT=%VUE_APP_BACKEND_PORT%
+echo.
+
+echo 启动参与方1前端...
+npm run serve 

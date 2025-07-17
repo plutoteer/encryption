@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>后端输出测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 后端输出测试</h1>
+    
+    <div class="container">
+        <h2>📋 当前配置</h2>
+        <div id="config"></div>
+    </div>
+    
+    <div class="container">
+        <h2>🔍 后端输出测试</h2>
+        <button onclick="testBackendOutput()">测试后端输出</button>
+        <button onclick="testDirectFetch()">直接Fetch测试</button>
+        <div id="testResults"></div>
+    </div>
+
+    <script>
+        // 显示当前配置
+        function showConfig() {
+            const config = {
+                '前端端口': window.location.port || '8030',
+                '前端URL': window.location.href,
+                '后端端口': getBackendPort(),
+                '后端URL': `http://localhost:${getBackendPort()}`,
+                'User Agent': navigator.userAgent,
+                '时间': new Date().toLocaleString()
+            };
+            
+            const configDiv = document.getElementById('config');
+            configDiv.innerHTML = Object.entries(config)
+                .map(([key, value]) => `
+                    <div style="display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #eee;">
+                        <span style="font-weight: bold;">${key}:</span>
+                        <span style="font-family: monospace;">${value}</span>
+                    </div>
+                `).join('');
+        }
+        
+        // 获取后端端口（模拟env.js的逻辑）
+        function getBackendPort() {
+            // 优先使用环境变量配置
+            let backendPort = window.BACKEND_PORT;
+            
+            // 如果环境变量没有设置，尝试从URL参数获取
+            if (!backendPort) {
+                const urlParams = new URLSearchParams(window.location.search);
+                backendPort = urlParams.get('backendPort');
+            }
+            
+            // 如果都没有，根据前端端口推断后端端口
+            if (!backendPort) {
+                const frontendPort = window.location.port || '8030';
+                switch (frontendPort) {
+                    case '8030': backendPort = '8083'; break;
+                    case '8031': backendPort = '8082'; break;
+                    case '8032': backendPort = '8081'; break;
+                    default: backendPort = '8083';
+                }
+            }
+            
+            // 确保端口号是有效的数字
+            if (!backendPort || isNaN(parseInt(backendPort, 10))) {
+                console.warn('无效的后端端口:', backendPort, '使用默认端口8083');
+                backendPort = '8083';
+            }
+            
+            return backendPort;
+        }
+        
+        // 添加结果
+        function addResult(type, title, content) {
+            const resultsDiv = document.getElementById('testResults');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `status ${type}`;
+            resultDiv.innerHTML = `
+                <h4>${title}</h4>
+                <pre>${content}</pre>
+                <small>${new Date().toLocaleTimeString()}</small>
+            `;
+            resultsDiv.appendChild(resultDiv);
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+        
+        // 测试后端输出
+        async function testBackendOutput() {
+            const backendPort = getBackendPort();
+            const backendUrl = `http://localhost:${backendPort}/api/participant/backend-output`;
+            
+            addResult('info', '🔍 测试后端输出', `正在测试: ${backendUrl}`);
+            
+            try {
+                const response = await fetch(backendUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    addResult('success', '✅ 后端输出测试成功', 
+                        `状态码: ${response.status}\n角色: ${data.role}\n输出内容:\n${data.output}`);
+                } else {
+                    addResult('error', '❌ 后端输出测试失败', 
+                        `状态码: ${response.status}\n状态文本: ${response.statusText}`);
+                }
+            } catch (error) {
+                addResult('error', '❌ 后端输出测试错误', 
+                    `错误类型: ${error.name}\n错误信息: ${error.message}\n\n可能的原因:\n1. 后端服务未启动\n2. 端口号不正确\n3. URL构造错误`);
+            }
+        }
+        
+        // 直接Fetch测试
+        async function testDirectFetch() {
+            const ports = ['8083', '8082', '8081'];
+            
+            addResult('info', '🔍 直接Fetch测试', '开始测试所有可能的端口...');
+            
+            for (const port of ports) {
+                try {
+                    const testURL = `http://localhost:${port}/api/participant/backend-output`;
+                    addResult('info', `🔍 测试端口 ${port}`, `正在测试: ${testURL}`);
+                    
+                    const response = await fetch(testURL, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        addResult('success', `✅ 端口 ${port} 成功`, 
+                            `URL: ${testURL}\n状态码: ${response.status}\n角色: ${data.role}\n输出内容:\n${data.output}`);
+                        break; // 找到可用端口，停止测试
+                    } else {
+                        addResult('warning', `⚠️ 端口 ${port} 响应异常`, 
+                            `URL: ${testURL}\n状态码: ${response.status}\n状态文本: ${response.statusText}`);
+                    }
+                } catch (error) {
+                    addResult('error', `❌ 端口 ${port} 不可用`, 
+                        `URL: http://localhost:${port}/api/participant/backend-output\n错误: ${error.message}`);
+                }
+            }
+        }
+        
+        // 页面加载时显示配置
+        window.onload = function() {
+            showConfig();
+        };
+    </script>
+</body>
+</html> 

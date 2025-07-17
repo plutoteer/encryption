@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CORS修复测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>CORS修复测试页面</h1>
+    
+    <div class="test-section">
+        <h2>测试1: 状态接口</h2>
+        <button onclick="testStatus()">测试 /status 接口</button>
+        <div id="status-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>测试2: 后端输出接口</h2>
+        <button onclick="testBackendOutput()">测试 /api/participant/backend-output 接口</button>
+        <div id="output-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>测试3: 动态端口检测</h2>
+        <button onclick="testDynamicPort()">测试动态端口检测</button>
+        <div id="port-result"></div>
+    </div>
+
+    <script>
+        async function testStatus() {
+            const resultDiv = document.getElementById('status-result');
+            resultDiv.innerHTML = '<p>测试中...</p>';
+            
+            try {
+                // 尝试多个端口
+                const ports = [8081, 8082, 8083, 8084, 8085];
+                let success = false;
+                
+                for (const port of ports) {
+                    try {
+                        const response = await fetch(`http://localhost:${port}/status`, {
+                            method: 'GET',
+                            headers: {
+                                'Accept': 'application/json'
+                            }
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            resultDiv.innerHTML = `
+                                <p class="success">✓ 成功连接到端口 ${port}</p>
+                                <pre>${JSON.stringify(data, null, 2)}</pre>
+                            `;
+                            success = true;
+                            break;
+                        }
+                    } catch (error) {
+                        console.log(`端口 ${port} 连接失败:`, error.message);
+                    }
+                }
+                
+                if (!success) {
+                    resultDiv.innerHTML = '<p class="error">✗ 所有端口都无法连接</p>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">✗ 测试失败: ${error.message}</p>`;
+            }
+        }
+        
+        async function testBackendOutput() {
+            const resultDiv = document.getElementById('output-result');
+            resultDiv.innerHTML = '<p>测试中...</p>';
+            
+            try {
+                // 尝试多个端口
+                const ports = [8081, 8082, 8083, 8084, 8085];
+                let success = false;
+                
+                for (const port of ports) {
+                    try {
+                        const response = await fetch(`http://localhost:${port}/api/participant/backend-output`, {
+                            method: 'GET',
+                            headers: {
+                                'Accept': 'application/json'
+                            }
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            resultDiv.innerHTML = `
+                                <p class="success">✓ 成功连接到端口 ${port}</p>
+                                <pre>${JSON.stringify(data, null, 2)}</pre>
+                            `;
+                            success = true;
+                            break;
+                        }
+                    } catch (error) {
+                        console.log(`端口 ${port} 连接失败:`, error.message);
+                    }
+                }
+                
+                if (!success) {
+                    resultDiv.innerHTML = '<p class="error">✗ 所有端口都无法连接</p>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">✗ 测试失败: ${error.message}</p>`;
+            }
+        }
+        
+        async function testDynamicPort() {
+            const resultDiv = document.getElementById('port-result');
+            resultDiv.innerHTML = '<p>测试中...</p>';
+            
+            try {
+                // 首先尝试从状态接口获取端口
+                const ports = [8081, 8082, 8083, 8084, 8085];
+                let actualPort = null;
+                
+                for (const port of ports) {
+                    try {
+                        const response = await fetch(`http://localhost:${port}/status`, {
+                            method: 'GET',
+                            headers: {
+                                'Accept': 'application/json'
+                            }
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            actualPort = data.port || port;
+                            break;
+                        }
+                    } catch (error) {
+                        console.log(`端口 ${port} 连接失败:`, error.message);
+                    }
+                }
+                
+                if (actualPort) {
+                    resultDiv.innerHTML = `
+                        <p class="success">✓ 检测到实际端口: ${actualPort}</p>
+                        <p>建议在前端配置中使用此端口</p>
+                    `;
+                } else {
+                    resultDiv.innerHTML = '<p class="error">✗ 无法检测到实际端口</p>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">✗ 测试失败: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html> 

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>后端输出测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .output {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 3px;
+            padding: 10px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            font-family: monospace;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .error {
+            color: #dc3545;
+        }
+        .success {
+            color: #28a745;
+        }
+    </style>
+</head>
+<body>
+    <h1>参与方后端输出测试</h1>
+    
+    <div class="test-section">
+        <h3>测试参与方状态</h3>
+        <button onclick="testStatus()">获取状态</button>
+        <div id="status-output" class="output"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>测试后端输出</h3>
+        <button onclick="testBackendOutput()">获取后端输出</button>
+        <div id="backend-output" class="output"></div>
+    </div>
+
+    <script>
+        async function testStatus() {
+            const output = document.getElementById('status-output');
+            output.textContent = '正在获取状态...';
+            
+            try {
+                const response = await fetch('/api/participant/status');
+                const data = await response.json();
+                output.textContent = JSON.stringify(data, null, 2);
+                output.className = 'output success';
+            } catch (error) {
+                output.textContent = `错误: ${error.message}`;
+                output.className = 'output error';
+            }
+        }
+        
+        async function testBackendOutput() {
+            const output = document.getElementById('backend-output');
+            output.textContent = '正在获取后端输出...';
+            
+            try {
+                const response = await fetch('/api/participant/backend-output');
+                const data = await response.json();
+                output.textContent = `角色: ${data.role}\n\n输出:\n${data.output}`;
+                output.className = 'output success';
+            } catch (error) {
+                output.textContent = `错误: ${error.message}`;
+                output.className = 'output error';
+            }
+        }
+    </script>
+</body>
+</html> 
